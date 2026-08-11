@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personales — Centro de Aplicaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+  :root{
+    --slate: #101c26; --slate-2: #16232f; --slate-3: #1e2e3b;
+    --mint: #3fae7a; --mint-bright: #55c890;
+    --text: #e3e8ec; --text-dim: #8b98a3;
+    --card: #f2f4f1; --card-ink: #16211c;
+    --display: 'Space Grotesk', sans-serif; --sans: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; font-family:var(--sans); color:var(--text);
+    background-color: var(--slate);
+    background-image:
+      radial-gradient(circle at 10% 105%, rgba(63,174,122,0.18) 0%, transparent 40%),
+      radial-gradient(circle at 95% -5%, rgba(30,46,59,0.7) 0%, transparent 45%),
+      linear-gradient(180deg, rgba(16,28,38,0.2) 0%, rgba(16,28,38,0.95) 70%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M60 0H0V60' fill='none' stroke='%233fae7a' stroke-width='0.5' opacity='0.07'/%3E%3C/svg%3E");
+    background-size: auto, auto, auto, 60px 60px;
+    background-attachment: fixed;
+  }
+  ::selection{ background:var(--mint); color:var(--slate); }
+
+  #login-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .login-card{ width:100%; max-width:380px; background:var(--slate-2); border:1px solid var(--slate-3); border-radius:8px; padding:40px 34px; }
+  .crest{ width:52px; height:52px; margin:0 auto 18px; border-radius:8px; background:var(--slate-3); border:1.5px solid var(--mint); display:flex; align-items:center; justify-content:center; font-family:var(--display); font-size:20px; color:var(--mint-bright); font-weight:700; }
+  .login-card h1{ font-family:var(--display); font-size:30px; text-align:center; margin:0 0 6px; font-weight:700; letter-spacing:-0.01em; color:var(--text); }
+  .login-card p.sub{ text-align:center; color:var(--text-dim); font-size:13px; margin:0 0 28px; }
+  .login-card input{ width:100%; padding:12px 13px; margin-bottom:12px; border-radius:5px; border:1px solid var(--slate-3); background:var(--slate); color:var(--text); font-size:14px; font-family:var(--sans); }
+  .login-card input:focus{ outline:2px solid var(--mint); outline-offset:1px; }
+  .login-card button{ width:100%; padding:13px; border-radius:5px; border:none; background:var(--mint); color:var(--slate); font-weight:700; font-size:14px; cursor:pointer; margin-top:6px; }
+  .login-card button:hover{ background:var(--mint-bright); }
+  .login-card button.secondary{ background:transparent; border:1px solid var(--slate-3); color:var(--text); font-weight:500; }
+  #login-error{ color:#e2988c; font-size:12.5px; margin-top:10px; min-height:16px; text-align:center; }
+
+  #hub{ display:none; min-height:100vh; }
+  #hub.visible{ display:block; }
+  header.hero{ padding:64px 24px 40px; text-align:center; position:relative; }
+  header.hero .eyebrow{ font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--mint-bright); font-weight:600; }
+  header.hero h1{ font-family:var(--display); font-size:clamp(42px, 8vw, 72px); margin:10px 0 12px; font-weight:700; letter-spacing:-0.02em; }
+  header.hero p{ color:var(--text-dim); font-size:16px; max-width:48ch; margin:0 auto; line-height:1.6; }
+  #logout-link{ position:absolute; top:24px; right:24px; font-size:12.5px; color:var(--text-dim); text-decoration:underline; cursor:pointer; background:none; border:none; font-family:var(--sans); }
+
+  .grid-wrap{ max-width:1080px; margin:0 auto; padding:0 24px 80px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:20px; }
+  .card{
+    background:var(--card); color:var(--card-ink); border-radius:10px; padding:26px 24px; text-decoration:none;
+    display:flex; flex-direction:column; gap:12px; position:relative; overflow:hidden;
+    transition:transform .22s ease, box-shadow .22s ease;
+    box-shadow:0 8px 20px rgba(0,0,0,.22);
+    border-left:5px solid var(--accent, var(--mint));
+  }
+  .card:hover{ transform:translateY(-4px); box-shadow:0 16px 32px rgba(0,0,0,.32); }
+  .card .top-row{ display:flex; align-items:center; justify-content:space-between; }
+  .card .icono{ font-size:26px; }
+  .card .tag{ font-family:var(--display); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--accent, var(--mint)); background:rgba(0,0,0,0.05); padding:3px 8px; border-radius:3px; }
+  .card h2{ font-family:var(--display); font-size:19px; font-weight:700; margin:0; letter-spacing:-0.01em; }
+  .card p{ font-size:13.5px; line-height:1.55; color:#4a5650; margin:0; flex:1; }
+  .card .abrir{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--card-ink); display:flex; align-items:center; gap:6px; }
+  .card .abrir .arrow{ transition:transform .2s ease; }
+  .card:hover .abrir .arrow{ transform:translateX(4px); }
+
+  footer.foot{ text-align:center; padding:20px 24px 50px; color:var(--text-dim); font-size:12px; }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="crest">P</div>
+    <h1>Personales</h1>
+    <p class="sub">Centro de aplicaciones — acceso privado</p>
+    <input type="email" id="login-email" placeholder="Correo electrónico" autocomplete="username">
+    <input type="password" id="login-pass" placeholder="Contraseña" autocomplete="current-password">
+    <button id="btn-login">Ingresar</button>
+    <button id="btn-register" class="secondary">Crear cuenta</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div id="hub">
+  <header class="hero">
+    <button id="logout-link">Salir</button>
+    <div class="eyebrow">Centro de Aplicaciones</div>
+    <h1>Personales</h1>
+    <p>Finanzas de GEA, finanzas personales, formación financiera, auditoría e inglés — todo tu ecosistema profesional en un solo lugar.</p>
+  </header>
+
+  <div class="grid-wrap">
+    <div class="grid" id="apps-grid"></div>
+  </div>
+
+  <footer class="foot">Personales · Centro de Aplicaciones</footer>
+</div>
+
+<script>
+/* =========================================================
+   FIREBASE CONFIG — mismo proyecto casabecas-8afea
+========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDnciWUp7T2grbtOVp7gvdlBUA8i2LiplI",
+  authDomain: "casabecas-8afea.firebaseapp.com",
+  databaseURL: "https://casabecas-8afea-default-rtdb.firebaseio.com",
+  projectId: "casabecas-8afea",
+  storageBucket: "casabecas-8afea.firebasestorage.app",
+  messagingSenderId: "557254185529",
+  appId: "1:557254185529:web:5f005fb866ba180fd473e8"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+const APPS = [
+  {icono:'🏢', tag:'GEA', nombre:'Financiero GEA', desc:'Realiza trámites de GEA de forma centralizada.', url:'https://financierogea.netlify.app', color:'#3fae7a'},
+  {icono:'🎓', tag:'Formación', nombre:'Academia', desc:'Datos y formación financiera para seguir creciendo profesionalmente.', url:'https://cbacademia.netlify.app', color:'#c9a227'},
+  {icono:'🔍', tag:'Auditoría', nombre:'FinanceOS Auditorías', desc:'Herramientas y módulos para procesos de auditoría.', url:'https://ecfinanceos.netlify.app', color:'#a3453f'},
+  {icono:'🇬🇧', tag:'Idiomas', nombre:'English Journey', desc:'Aprende inglés de forma progresiva, desde cero.', url:'https://cbenglishjourney.netlify.app', color:'#6b4a52'}
+];
+
+function renderGrid(){
+  const grid = document.getElementById('apps-grid');
+  grid.innerHTML = APPS.map(app => `
+    <a class="card" style="--accent:${app.color}" href="${app.url}" target="_blank" rel="noopener">
+      <div class="top-row">
+        <div class="icono">${app.icono}</div>
+        <div class="tag">${app.tag}</div>
+      </div>
+      <h2>${app.nombre}</h2>
+      <p>${app.desc}</p>
+      <div class="abrir">Abrir <span class="arrow">→</span></div>
+    </a>`).join('');
+}
+
+document.getElementById('btn-login').onclick = () => doAuth('login');
+document.getElementById('btn-register').onclick = () => doAuth('register');
+document.getElementById('logout-link').onclick = () => auth.signOut();
+
+function doAuth(mode){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errBox = document.getElementById('login-error');
+  errBox.textContent = '';
+  if(!email || !pass){ errBox.textContent = 'Completa correo y contraseña.'; return; }
+  const action = mode === 'login' ? auth.signInWithEmailAndPassword(email, pass) : auth.createUserWithEmailAndPassword(email, pass);
+  action.catch(err => { errBox.textContent = traducirError(err.code); });
+}
+function traducirError(code){
+  const map = {
+    'auth/invalid-email':'Correo inválido.', 'auth/user-not-found':'No existe una cuenta con ese correo.',
+    'auth/wrong-password':'Contraseña incorrecta.', 'auth/email-already-in-use':'Ese correo ya está registrado.',
+    'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.', 'auth/invalid-credential':'Credenciales inválidas.'
+  };
+  return map[code] || 'Error de autenticación. Intenta nuevamente.';
+}
+
+auth.onAuthStateChanged(user => {
+  if(user){
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('hub').classList.add('visible');
+    renderGrid();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('hub').classList.remove('visible');
+  }
+});
+</script>
+</body>
+</html>
